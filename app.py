@@ -1,41 +1,48 @@
+from flask import Flask, request, jsonify
 import os
-from flask import Flask, request
 import requests
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
 
 @app.route('/', methods=['POST'])
-def receive_signal():
-    data = request.json
+def webhook():
+    data = request.get_json()
     if not data:
-        return "No data", 400
+        return jsonify({"error": "no data"}), 400
 
-    try:
-        symbol = data.get("symbol", "N/A")
-        entry = round(float(data.get("entry", 0)), 2)
-        stop = round(float(data.get("stop", 0)), 2)
-        take = round(float(data.get("take", 0)), 2)
-        tf = data.get("tf", "N/A")
-        direction = data.get("direction", "N/A")
+    symbol = data.get("symbol")
+    entry = data.get("entry")
+    stop = data.get("stop")
+    take = data.get("take")
+    tf = data.get("tf")
+    direction = data.get("direction")
+    source = data.get("source", "WaveRSI")
 
-        msg = f"🟢 Новый сигнал ({direction})\n" \
-              f"Актив: {symbol}\n" \
-              f"Цена входа: {entry}\n" \
-              f"Стоп-лосс: {stop}\n" \
-              f"Тейк-профит: {take}\n" \
-              f"Таймфрейм: {tf}"
+    direction_emoji = "🟢" if direction == "LONG" else "🔴"
+    msg = (
+        f"{direction_emoji} Новый сигнал ({direction})\n"
+        f"Источник: {source}\n"
+        f"Актив: {symbol}\n"
+        f"Цена входа: {entry}\n"
+        f"Стоп-лосс: {stop}\n"
+        f"Тейк-профит: {take}\n"
+        f"Таймфрейм: {tf}"
+    )
 
+    if TELEGRAM_TOKEN and CHAT_ID:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": CHAT_ID,
-            "text": msg
-        }
-
+        payload = {"chat_id": CHAT_ID, "text": msg}
         requests.post(url, json=payload)
-        return "Message sent", 200
 
-    except Exception as e:
-        return str(e), 500
+    return jsonify({"ok": True})
+
+# Пинг-маршрут для UptimeRobot
+@app.route('/ping', methods=['GET'])
+def ping():
+    return "pong", 200
+
+if __name__ == "__main__":
+    app.run()
