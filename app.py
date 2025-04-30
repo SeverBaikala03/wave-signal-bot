@@ -7,7 +7,7 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
-@app.route('/', methods=['POST'])
+@app.route('/webhook', methods=['POST'])  # <<< ВАЖНО: именно /webhook!
 def webhook():
     data = request.get_json()
     if not data:
@@ -39,7 +39,7 @@ def webhook():
 
     return jsonify({"ok": True})
 
-# Пинг-маршрут для UptimeRobot
+# Пинг-маршрут для проверки доступности сервера
 @app.route('/ping', methods=['GET'])
 def ping():
     return "pong", 200
